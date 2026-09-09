@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobFinder</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
+  body{background:#05070c;color:#e2e8f0;font-family:Inter,sans-serif;padding:20px}
+
+  /* ---------- en-tete ---------- */
+  .header{display:flex;justify-content:space-between;align-items:center;max-width:2000px;margin:0 auto}
+  .header h1{font-size:1.7rem;font-weight:800;
+             background:linear-gradient(to right,#4f46e5,#06b6d4);
+             -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .user-profile{display:flex;align-items:center;gap:.7rem;background:rgba(30,41,59,.5);
+                padding:.45rem 1rem;border-radius:50px;
+                border:1px solid rgba(255,255,255,.1);font-size:.85rem}
+
+  .tabs-container{max-width:2000px;margin:1.2rem auto 1.2rem;display:flex;gap:.8rem;flex-wrap:wrap}
+  .tab-btn{background:#131c2b;border:1px solid #1e2a3d;padding:.55rem 1.1rem;
+           border-radius:8px;color:#94a3b8;cursor:pointer;font-weight:600;font-size:.88rem}
+  .tab-btn.active{background:#4f46e5;border-color:#4f46e5;color:#fff}
+
+  /* ---------- scene carte ---------- */
+    .scene{position:relative;max-width:2000px;margin:0 auto;
+         height:calc(100vh - 175px);min-height:520px;
+         border:1px solid #16202f;border-radius:16px;overflow:hidden}
+  #carte{position:absolute;inset:0;background:#080c14}
+  .leaflet-container{background:#080c14}
+  .voile{position:absolute;inset:0;z-index:400;pointer-events:none;
+         background:linear-gradient(90deg, rgba(5,7,12,.92) 0%, rgba(5,7,12,.55) 26%, rgba(5,7,12,0) 46%)}
+
+  .panneau{position:absolute;top:18px;left:18px;z-index:600;width:320px;
+           background:rgba(9,13,21,.86);border:1px solid #1c2838;border-radius:13px;
+           padding:18px;backdrop-filter:blur(14px)}
+  .panneau h2{font-size:.95rem;font-weight:600;color:#cbd5e1;margin-bottom:14px;
+              display:flex;align-items:center;gap:.5rem}
+  .panneau h2 i{color:#ef4444;font-size:.85rem}
+  .champ{margin-bottom:13px}
+  .champ label{display:block;font-size:10.5px;text-transform:uppercase;
+               letter-spacing:.08em;color:#475569;margin-bottom:6px}
+  .champ textarea,.champ input{width:100%;background:#070b12;border:1px solid #1c2838;
+    border-radius:8px;color:#cbd5e1;padding:9px 11px;font:inherit;font-size:13px;
+    outline:none;resize:none}
+  .champ textarea:focus,.champ input:focus{border-color:#ef4444}
+  .go{width:100%;background:#7f1d1d;border:1px solid #ef4444;color:#fca5a5;
+      padding:11px;border-radius:8px;font:inherit;font-weight:600;font-size:13.5px;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem}
+  .go:hover:not(:disabled){background:#991b1b}
+  .go:disabled{opacity:.55;cursor:not-allowed}
+
+  .criteres{margin-top:13px;padding:10px 12px;background:rgba(7,11,18,.7);
+            border:1px solid #1c2838;border-radius:8px;font-size:11.5px;
+            font-family:'JetBrains Mono',monospace;color:#64748b;line-height:1.85;display:none}
+  .criteres b{color:#cbd5e1;font-weight:500}
+
+  .stats{position:absolute;top:18px;right:18px;z-index:600;display:flex;gap:11px}
+  .stat{background:rgba(9,13,21,.86);border:1px solid #1c2838;border-radius:10px;
+        padding:10px 17px;text-align:center;backdrop-filter:blur(14px);min-width:80px}
+  .stat .n{font-size:22px;font-weight:700;line-height:1}
+  .stat .l{font-size:9.5px;color:#64748b;margin-top:4px;
+           text-transform:uppercase;letter-spacing:.07em}
+
+  .journal{position:absolute;bottom:18px;left:18px;z-index:600;width:320px;
+           background:rgba(9,13,21,.86);border:1px solid #1c2838;border-radius:11px;
+           padding:12px 15px;font-family:'JetBrains Mono',monospace;font-size:11px;
+           line-height:1.95;color:#475569;backdrop-filter:blur(14px);
+           max-height:150px;overflow-y:auto}
+  .journal b{color:#f87171;font-weight:400}
+  .journal .ok{color:#4ade80}
+  .journal .warn{color:#fbbf24}
+
+  .resultats{position:absolute;top:88px;right:18px;bottom:18px;z-index:600;width:340px;
+             background:rgba(9,13,21,.9);border:1px solid #1c2838;border-radius:13px;
+             backdrop-filter:blur(14px);display:none;flex-direction:column;overflow:hidden}
+  .res-h{padding:13px 16px;border-bottom:1px solid #1c2838;display:flex;
+         justify-content:space-between;align-items:center;font-size:12px;color:#64748b;gap:8px}
+  .res-corps{overflow-y:auto;flex:1;padding:4px 0}
+  .item{padding:11px 16px;border-bottom:1px solid #131c29}
+  .item:hover{background:rgba(30,41,59,.35)}
+  .item .nm{font-size:13px;font-weight:500;color:#e2e8f0}
+  .item .mt{font-size:11px;color:#64748b;margin-top:2px}
+  .item .ml{font-size:11.5px;margin-top:4px;font-family:'JetBrains Mono',monospace;color:#4ade80}
+  .item .ml.no{color:#64748b}
+  .item .ml a{color:#06b6d4;text-decoration:none}
+  .item .ml a:hover{text-decoration:underline}
+  .item .ctx{font-size:11px;color:#64748b;margin-top:5px;line-height:1.5}
+
+  /* villes cliquables */
+  .ville-btn{display:flex;justify-content:space-between;align-items:center;
+             padding:11px 16px;border-bottom:1px solid #131c29;cursor:pointer}
+  .ville-btn:hover{background:rgba(30,41,59,.45)}
+  .ville-btn .v{font-size:13px;font-weight:500;color:#e2e8f0}
+  .ville-btn .c{font-size:11px;color:#64748b}
+  .ville-btn .fl{color:#06b6d4;font-size:11px}
+
+  /* marqueurs */
+  .cible{width:14px;height:14px;border-radius:50%;background:#ef4444;
+         box-shadow:0 0 0 4px rgba(239,68,68,.22),0 0 22px rgba(239,68,68,.85)}
+  .halo{position:absolute;top:50%;left:50%;width:14px;height:14px;
+        border:1.5px solid #ef4444;border-radius:50%;transform:translate(-50%,-50%);
+        animation:onde 2.6s ease-out infinite}
+  @keyframes onde{0%{width:14px;height:14px;opacity:.9}100%{width:88px;height:88px;opacity:0}}
+  .src{width:8px;height:8px;border-radius:50%;background:#fb923c;box-shadow:0 0 9px #fb923c}
+  .src.ok{background:#4ade80;box-shadow:0 0 9px #4ade80}
+
+  /* ---------- panneaux classiques ---------- */
+  .glass-panel{background:rgba(30,41,59,.7);backdrop-filter:blur(12px);
+               border:1px solid rgba(255,255,255,.1);border-radius:16px;
+               padding:2rem;max-width:2000px;margin:0 auto;display:flex;flex-direction:column}
+  .panel-title{font-size:1.2rem;font-weight:600;margin-bottom:1.5rem;
+               display:flex;align-items:center;gap:.5rem;color:#cbd5e1}
+  .btn-sec{background:transparent;border:1px solid #334155;color:#94a3b8;
+           padding:.45rem 1rem;border-radius:6px;cursor:pointer;font-size:.82rem}
+  .btn-sec:hover{border-color:#06b6d4;color:#06b6d4}
+  .btn-danger{border-color:#7f1d1d;color:#f87171}
+  .btn-danger:hover{border-color:#ef4444;color:#ef4444}
+  .results-box{background:#0f172a;border-radius:12px;flex-grow:1;padding:1rem;
+               overflow-y:auto;font-size:.9rem;border:1px solid #1e293b}
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;
+               min-height:200px;color:#475569;text-align:center}
+  .empty-state i{font-size:3rem;margin-bottom:1rem;opacity:.5}
+  table{width:100%;text-align:left;border-collapse:collapse}
+  th{padding:12px;font-weight:600;color:#cbd5e1;border-bottom:2px solid #334155}
+  td{padding:12px;border-bottom:1px solid #1e293b}
+  tr:hover td{background:rgba(30,41,59,.4)}
+  input[type=checkbox]{width:16px;height:16px;accent-color:#4f46e5;cursor:pointer}
+  select{background:#0f172a;border:1px solid #334155;border-radius:8px;
+         color:#fff;padding:.45rem .8rem;font:inherit;font-size:.85rem;outline:none}
+  .champ-plat{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;
+              color:#e2e8f0;padding:.5rem;font-size:.82rem;outline:none}
+
+  @media(max-width:900px){
+    .scene{height:auto}
+    #carte{position:relative;height:300px}
+    .voile{display:none}
+    .panneau,.journal,.resultats,.stats{position:static;width:auto;margin:12px 0;
+                                        backdrop-filter:none;display:block}
+    .resultats{max-height:340px;display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><i class="fa-solid fa-satellite-dish"></i> JobFinder</h1>
+  <div class="user-profile"><i class="fa-solid fa-user-shield"></i>
+    <span id="quotaLabel">&mdash;</span></div>
+</div>
+
+<div class="tabs-container">
+  <button class="tab-btn active" id="btn-recherche" onclick="changerOnglet('recherche')">
+    <i class="fa-solid fa-magnifying-glass"></i> Nouvelle recherche</button>
+  <button class="tab-btn" id="btn-historique" onclick="changerOnglet('historique')">
+    <i class="fa-solid fa-database"></i> Prospects</button>
+  <button class="tab-btn" id="btn-envoi" onclick="changerOnglet('envoi')">
+    <i class="fa-solid fa-paper-plane"></i> Envoi courriel</button>
+</div>
+
+<!-- ===== ONGLET 1 : RECHERCHE ===== -->
+<div id="vue-recherche" class="scene">
+  <div id="carte"></div>
+  <div class="voile"></div>
+
+  <div class="panneau">
+    <h2><i class="fa-solid fa-crosshairs"></i> Cible de recherche</h2>
+    <form id="scrapeForm">
+      <div class="champ">
+        <label for="demande">Que cherches-tu</label>
+        <textarea id="demande" rows="4" required
+          placeholder="Ex : je cherche un stage en cybersecurite autour de Montreal"></textarea>
+      </div>
+      <div class="champ">
+        <label for="maximum">Nombre de resultats</label>
+        <input id="maximum" type="number" value="10" min="1" max="30">
+      </div>
+      <button type="submit" class="go" id="btnGo">
+        <i class="fa-solid fa-bolt"></i> Lancer le balayage</button>
+    </form>
+    <div class="criteres" id="criteres"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="sEnt" style="color:#f87171">0</div>
+      <div class="l">entreprises</div></div>
+    <div class="stat"><div class="n" id="sMail" style="color:#4ade80">0</div>
+      <div class="l">courriels</div></div>
+  </div>
+
+  <div class="journal" id="journal">en attente</div>
+
+  <div class="resultats" id="resultats">
+    <div class="res-h">
+      <span id="resTitre">0 entreprises</span>
+      <button class="btn-sec" id="btnSave">Sauvegarder</button>
+    </div>
+    <div class="res-corps" id="resCorps"></div>
+  </div>
+</div>
+
+<!-- ===== ONGLET 2 : PROSPECTS ===== -->
+<div id="vue-historique" class="glass-panel" style="display:none">
+  <div class="panel-title" style="justify-content:space-between">
+    <div><i class="fa-solid fa-table"></i> Base de donnees des prospects</div>
+    <div style="display:flex;gap:.6rem">
+      <button class="btn-sec btn-danger" onclick="supprimerSelection()">
+        <i class="fa-solid fa-trash"></i> Supprimer la selection</button>
+      <button class="btn-sec" onclick="chargerHistorique()">
+        <i class="fa-solid fa-rotate-right"></i> Rafraichir</button>
+    </div>
+  </div>
+  <div class="results-box" style="overflow-x:auto;background:#0b0f19">
+    <table>
+      <thead><tr>
+        <th style="width:40px"><input type="checkbox" id="checkTous" onclick="toutCocher(this)"></th>
+        <th>Entreprise</th><th>Domaine</th><th>Courriel</th><th>Ajoute le</th>
+      </tr></thead>
+      <tbody id="tableHistorique"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== ONGLET 3 : ENVOI ===== -->
+<div id="vue-envoi" class="glass-panel" style="display:none">
+  <div class="panel-title" style="justify-content:space-between">
+    <div><i class="fa-solid fa-paper-plane"></i> Preparation des envois</div>
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <select id="gabaritChoisi" onchange="chargerEnvoi()">
+        <option value="emploi">Candidature spontanee</option>
+        <option value="fournisseur">Demande de fournisseur</option>
+      </select>
+      <button class="btn-sec" onclick="chargerEnvoi()">
+        <i class="fa-solid fa-rotate-right"></i> Recharger</button>
+    </div>
+  </div>
+  <div class="results-box" style="background:#0b0f19" id="zoneEnvoi"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ===================== ETAT =====================
+var prospects = [];
+var envoiListe = [];
+var villesTrouvees = [];
+var derniereListe = [];
+var lignesJournal = [];
+
+// ===================== CARTE =====================
+var carte = L.map('carte', {zoomControl:false, attributionControl:false}).setView([46.8,-71.2], 7);
+L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+  maxZoom: 20
+}).addTo(carte);
+
+var couches = [];
+function nettoyerCarte(){
+  for(var i=0;i<couches.length;i++) carte.removeLayer(couches[i]);
+  couches = [];
+}
+
+function log(txt){
+  lignesJournal.push(txt);
+  if(lignesJournal.length > 10) lignesJournal.shift();
+  var j = document.getElementById('journal');
+  j.innerHTML = lignesJournal.join('<br>');
+  j.scrollTop = j.scrollHeight;
+}
+
+function courbe(a, b, courbure){
+  var pts=[], mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2;
+  var dx=b[0]-a[0], dy=b[1]-a[1];
+  var cx=mx-dy*courbure, cy=my+dx*courbure;
+  for(var t=0;t<=1.001;t+=0.04){
+    var u=1-t;
+    pts.push([u*u*a[0]+2*u*t*cx+t*t*b[0], u*u*a[1]+2*u*t*cy+t*t*b[1]]);
+  }
+  return pts;
+}
+
+function tracerArc(depart, cible, avecCourriel, nom){
+  var pts = courbe(depart, cible, (Math.random()-.5)*.35);
+  var ligne = L.polyline([], {
+    color: avecCourriel ? '#4ade80' : '#ef4444', weight:1.3, opacity:.7
+  }).addTo(carte);
+  couches.push(ligne);
+
+  var i = 0;
+  (function croitre(){
+    if(i >= pts.length){
+      var m = L.marker(depart, {icon: L.divIcon({className:'',
+        html:'<div class="src'+(avecCourriel?' ok':'')+'"></div>', iconSize:[8,8]})}).addTo(carte);
+      m.bindTooltip(nom, {direction:'right', offset:[8,0]});
+      couches.push(m);
+      return;
+    }
+    ligne.addLatLng(pts[i]); i++;
+    setTimeout(croitre, 20);
+  })();
+}
+
+function poserCible(lat, lon){
+  var m = L.marker([lat,lon], {icon: L.divIcon({className:'',
+    html:'<div style="position:relative"><div class="halo"></div><div class="cible"></div></div>',
+    iconSize:[14,14]})}).addTo(carte);
+  couches.push(m);
+}
+
+// ===================== ONGLETS =====================
+function changerOnglet(onglet){
+  var vues = {
+    recherche: document.getElementById('vue-recherche'),
+    historique: document.getElementById('vue-historique'),
+    envoi: document.getElementById('vue-envoi')
+  };
+  var btns = {
+    recherche: document.getElementById('btn-recherche'),
+    historique: document.getElementById('btn-historique'),
+    envoi: document.getElementById('btn-envoi')
+  };
+  for(var cle in vues){
+    vues[cle].style.display = 'none';
+    btns[cle].classList.remove('active');
+  }
+  vues[onglet].style.display = (onglet === 'recherche') ? 'block' : 'flex';
+  btns[onglet].classList.add('active');
+
+  if(onglet === 'recherche') setTimeout(function(){ carte.invalidateSize(); }, 60);
+  if(onglet === 'historique') chargerHistorique();
+  if(onglet === 'envoi') chargerEnvoi();
+}
+
+// ===================== QUOTA =====================
+async function majQuota(){
+  try{
+    var r = await fetch('/api/quota');
+    var q = await r.json();
+    var n = q.restants;
+    document.getElementById('quotaLabel').textContent =
+      n + ' envoi' + (n > 1 ? 's' : '') + ' restant' + (n > 1 ? 's' : '');
+  }catch(e){}
+}
+
+// ===================== RECHERCHE =====================
+document.getElementById('scrapeForm').addEventListener('submit', async function(ev){
+  ev.preventDefault();
+
+  var demande = document.getElementById('demande').value.trim();
+  var maximum = parseInt(document.getElementById('maximum').value) || 10;
+  if(!demande) return;
+
+  var btn = document.getElementById('btnGo');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyse...';
+
+  nettoyerCarte();
+  lignesJournal = [];
+  document.getElementById('resCorps').innerHTML = '';
+  document.getElementById('resultats').style.display = 'none';
+  document.getElementById('sEnt').textContent = '0';
+  document.getElementById('sMail').textContent = '0';
+  log('<b>&rsaquo;</b> analyse de la demande...');
+
+  try{
+    // 1. Comprendre la demande
+    var ra = await fetch('/api/analyser', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({texte: demande})
+    });
+    var crit = await ra.json();
+
+    var c = document.getElementById('criteres');
+    c.style.display = 'block';
+    c.innerHTML = 'secteur : <b>' + crit.secteur + '</b><br>region : <b>'
+                + (crit.ville || '?') + ', ' + crit.province + '</b>'
+                + (crit.auto ? '' : '<br><span style="color:#fbbf24">analyse auto indisponible</span>');
+    log('<b>&rsaquo;</b> secteur=' + crit.secteur);
+
+    // 2. Geocoder la cible
+    var lat = null, lon = null;
+    try{
+      var rg = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='
+                           + encodeURIComponent((crit.ville || '') + ', ' + crit.province));
+      var g = await rg.json();
+      if(g.length){
+        lat = parseFloat(g[0].lat); lon = parseFloat(g[0].lon);
+        carte.flyTo([lat,lon], 9, {duration:1.2});
+        poserCible(lat, lon);
+        log('<b>&rsaquo;</b> cible ' + lat.toFixed(3) + ', ' + lon.toFixed(3));
+      }
+    }catch(e){ log('<b>&rsaquo;</b> geocodage indisponible'); }
+
+    // 3. Chercher et regrouper par ville
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Recherche...';
+    log('<b>&rsaquo;</b> recherche via Apify...');
+
+    var region = crit.ville ? crit.ville + ', ' + crit.province : crit.province;
+    var rv = await fetch('/api/villes', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({secteur: crit.secteur, region: region, maximum: maximum})
+    });
+    if(!rv.ok) throw new Error(rv.status + ' - ' + await rv.text());
+
+    var res = await rv.json();
+    if(!res.total){ log('<b>&rsaquo;</b> aucune entreprise trouvee'); return; }
+
+    villesTrouvees = res.villes;
+    window._cible = (lat !== null) ? [lat, lon] : null;
+    log('<b>&rsaquo;</b> ' + res.total + ' entreprises &middot; ' + res.villes.length + ' villes');
+    if(res.ecartes){
+      log('&nbsp;&nbsp;<span class="warn">' + res.ecartes + ' deja connues, ecartees</span>');
+    }
+    afficherVilles(res);
+
+  }catch(err){
+    log('<b>&rsaquo;</b> erreur : ' + err.message);
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Lancer le balayage';
+  }
+});
+
+function afficherVilles(res){
+  var box = document.getElementById('resultats');
+  box.style.display = 'flex';
+  document.getElementById('resTitre').textContent =
+    res.total + ' entreprises &middot; choisis une ville';
+  document.getElementById('btnSave').style.display = 'none';
+
+  var html = '';
+  for(var i = 0; i < res.villes.length; i++){
+    var v = res.villes[i];
+    html += '<div class="ville-btn" onclick="enrichirVille(' + i + ')">'
+      + '<div><div class="v">' + v.ville + '</div>'
+      + '<div class="c">' + v.nombre + ' entreprise' + (v.nombre > 1 ? 's' : '') + '</div></div>'
+      + '<div class="fl">balayer &rsaquo;</div></div>';
+  }
+  document.getElementById('resCorps').innerHTML = html;
+}
+
+async function enrichirVille(index){
+  var groupe = villesTrouvees[index];
+  var data = groupe.entreprises;
+
+  document.getElementById('resCorps').innerHTML = '';
+  document.getElementById('btnSave').style.display = 'inline-block';
+  log('<b>&rsaquo;</b> balayage de ' + groupe.ville + '...');
+
+  var cible = window._cible;
+  var trouves = 0, mails = 0;
+
+  for(var i = 0; i < data.length; i++){
+    var e = data[i];
+
+    if(e.domaine){
+      try{
+        var rr = await fetch('/api/enrich', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({domaine: e.domaine})
+        });
+        var info = await rr.json();
+        e.courriel = e.courriel || info.courriel;
+        e.contexte = info.contexte;
+        e.carrieres = info.carrieres;
+      }catch(err){}
+    }
+
+    trouves++;
+    if(e.courriel) mails++;
+    document.getElementById('sEnt').textContent = trouves;
+    document.getElementById('sMail').textContent = mails;
+
+    if(cible){
+      var angle = Math.PI*2*i/data.length + Math.random()*.4;
+      var rayon = .3 + Math.random()*.55;
+      tracerArc([cible[0] + Math.sin(angle)*rayon, cible[1] + Math.cos(angle)*rayon*1.5],
+                cible, !!e.courriel, e.nom);
+    }
+
+    log('&nbsp;&nbsp;' + (e.courriel
+        ? '<span class="ok">[ok]</span> ' + e.nom
+        : '<span class="warn">[--]</span> ' + e.nom));
+
+    ajouterResultat(e);
+    document.getElementById('resTitre').textContent =
+      trouves + ' entreprises &middot; ' + mails + ' courriels';
+  }
+
+  log('<b>&rsaquo;</b> <span class="ok">balayage termine</span>');
+  derniereListe = data;
+}
+
+function ajouterResultat(e){
+  var lien = e.domaine ? 'https://' + e.domaine : null;
+  var contact;
+
+  if(e.courriel){
+    contact = '<div class="ml">' + e.courriel + '</div>';
+  }else if(e.carrieres){
+    contact = '<div class="ml no">pas de courriel &mdash; <a href="' + e.carrieres
+            + '" target="_blank" rel="noopener">page carrieres</a></div>';
+  }else if(lien){
+    contact = '<div class="ml no">pas de courriel &mdash; <a href="' + lien
+            + '" target="_blank" rel="noopener">visiter le site</a></div>';
+  }else{
+    contact = '<div class="ml no">aucun site web</div>';
+  }
+
+  document.getElementById('resCorps').innerHTML +=
+    '<div class="item"><div class="nm">' + e.nom + '</div>'
+    + '<div class="mt">' + (e.ville || '-') + ' &middot; ' + (e.categorie || '-') + '</div>'
+    + contact
+    + (e.contexte ? '<div class="ctx">' + e.contexte + '</div>' : '')
+    + '</div>';
+}
+
+document.getElementById('btnSave').addEventListener('click', async function(ev){
+  if(!derniereListe.length) return;
+  ev.target.textContent = 'Sauvegarde...';
+  try{
+    var r = await fetch('/api/save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(derniereListe)
+    });
+    var res = await r.json();
+    ev.target.textContent = res.ajoutes + ' ajoutes';
+  }catch(err){ ev.target.textContent = 'Erreur'; }
+});
+
+// ===================== PROSPECTS =====================
+function cleDe(p){ return p.domaine || p.nom; }
+
+async function chargerHistorique(){
+  var tbody = document.getElementById('tableHistorique');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px">Chargement...</td></tr>';
+  try{
+    var r = await fetch('/api/historique');
+    prospects = await r.json();
+    if(!prospects.length){
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#94a3b8">Aucun prospect sauvegarde.</td></tr>';
+      return;
+    }
+        var html = '';
+    for(var i = 0; i < prospects.length; i++){
+      var p = prospects[i];
+
+      var cellCourriel;
+      var courriel = (p.courriel || '').trim();
+      var domaine  = (p.domaine  || '').trim();
+      var carrieres = (p.carrieres || '').trim();
+
+      if (courriel && courriel.indexOf('@') !== -1) {
+        cellCourriel = '<a href="mailto:' + courriel + '" style="color:#4ade80;text-decoration:none">'
+                     + courriel + '</a>';
+      } else if (carrieres) {
+        cellCourriel = '<a href="' + carrieres + '" target="_blank" rel="noopener noreferrer" '
+                     + 'style="color:#fbbf24;text-decoration:none" '
+                     + 'title="Aucun courriel - page carrieres">Page carrieres &#8599;</a>';
+      } else if (domaine) {
+        var url = domaine.indexOf('http') === 0 ? domaine : 'https://' + domaine;
+        cellCourriel = '<a href="' + url + '" target="_blank" rel="noopener noreferrer" '
+                     + 'style="color:#fbbf24;text-decoration:none" '
+                     + 'title="Aucun courriel - visiter le site">Visiter le site &#8599;</a>';
+      } else {
+        cellCourriel = '<span style="color:#64748b">Introuvable</span>';
+      }
+
+      html += '<tr>'
+        + '<td><input type="checkbox" class="chkProspect" data-cle="' + cleDe(p) + '"></td>'
+        + '<td style="color:#e2e8f0;font-weight:500">' + (p.nom || '-') + '</td>'
+        + '<td style="color:#94a3b8;font-size:.9em">' + (domaine || '-') + '</td>'
+        + '<td>' + cellCourriel + '</td>'
+        + '<td style="color:#64748b;font-size:.85em">' + (p.date_ajout || '-') + '</td></tr>';
+    }
+    tbody.innerHTML = html;
+  }catch(err){
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ef4444;padding:30px">Erreur de lecture.</td></tr>';
+  }
+}
+
+function toutCocher(source){
+  var b = document.querySelectorAll('.chkProspect');
+  for(var i = 0; i < b.length; i++) b[i].checked = source.checked;
+}
+
+async function supprimerSelection(){
+  var coches = document.querySelectorAll('.chkProspect:checked');
+  var cles = [];
+  for(var i = 0; i < coches.length; i++) cles.push(coches[i].dataset.cle);
+  if(!cles.length){ alert('Aucune ligne selectionnee.'); return; }
+  if(!confirm(cles.length + ' prospect(s) seront retires. Continuer ?')) return;
+  try{
+    await fetch('/api/delete', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({cles: cles})
+    });
+    document.getElementById('checkTous').checked = false;
+    chargerHistorique();
+  }catch(err){ alert('Erreur : ' + err.message); }
+}
+
+// ===================== ENVOI =====================
+function gabarit(p, type){
+  var domaine = (p.categorie || 'votre domaine').toLowerCase();
+  var extrait = p.contexte ? ' - ' + p.contexte.slice(0,150) + '...' : '';
+  if(type === 'fournisseur'){
+    return 'Bonjour,\n\nJe vous ecris parce que votre entreprise oeuvre dans ' + domaine + extrait
+      + '\n\nJe suis a la recherche d\u0027un fournisseur dans ce secteur et j\u0027aimerais connaitre '
+      + 'vos services, vos delais et votre grille tarifaire.\n\nAuriez-vous quelques minutes pour en discuter ?'
+      + '\n\nCristobal Samano Osuna\n514 826-4039';
+  }
+  return 'Bonjour,\n\nJe vous ecris parce que votre entreprise oeuvre dans ' + domaine + extrait
+    + '\n\nJe termine en decembre mon certificat en analyse et cybersecurite operationnelle a '
+    + 'Polytechnique Montreal.\n\nAuriez-vous des besoins, meme a temps partiel ou en stage ?'
+    + '\n\nCristobal Samano Osuna\n514 826-4039';
+}
+async function retirerProspect(cle){
+  if(!confirm('Retirer ce prospect de la liste ?')) return;
+  try{
+    await fetch('/api/delete', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({cles: [cle]})
+    });
+    chargerEnvoi();
+  }catch(err){ alert('Erreur : ' + err.message); }
+}
+
+async function chargerEnvoi(){
+  var boite = document.getElementById('zoneEnvoi');
+  boite.innerHTML = '<div class="empty-state"><p>Chargement...</p></div>';
+  majQuota();
+
+
+  try{
+    var r = await fetch('/api/historique');
+    prospects = await r.json();
+  }catch(err){
+    boite.innerHTML = '<div class="empty-state"><p style="color:#ef4444">Erreur de lecture.</p></div>';
+    return;
+  }
+
+  var dejaFaits = [];
+  try{
+    var rc = await fetch('/api/contactes');
+    dejaFaits = await rc.json();
+  }catch(e){}
+
+  envoiListe = prospects.filter(function(p){ return p.courriel; });
+
+  if(!envoiListe.length){
+    boite.innerHTML = '<div class="empty-state"><i class="fa-solid fa-inbox"></i>'
+      + '<p>Aucun prospect avec courriel.</p></div>';
+    return;
+  }
+
+  var html = '';
+  for(var i = 0; i < envoiListe.length; i++){
+    var p = envoiListe[i];
+    var contacte = dejaFaits.indexOf(p.courriel.toLowerCase()) >= 0;
+    html += '<div style="border-bottom:1px solid #1e293b;padding:1rem 0">'
+      + '<div style="display:flex;align-items:center;gap:.7rem">'
+      + '<input type="checkbox" class="chkEnvoi" data-i="' + i + '"' + (contacte ? ' disabled' : '') + '>'
+      + '<div style="flex:1"><div style="color:#e2e8f0;font-weight:500">' + p.nom + '</div>'
+      + '<div style="color:#64748b;font-size:.8rem">'
+      + '<span style="color:#10b981">' + p.courriel + '</span>'
+      + (p.domaine ? ' - ' + p.domaine : '')
+      + (contacte ? ' <span style="color:#e3b341;margin-left:.5rem">deja contacte</span>' : '')
+      + '</div></div>'
+        + '<button class="btn-sec" onclick="basculer(' + i + ')">Voir le message</button>'
+      + '<button class="btn-sec btn-danger" onclick="retirerProspect(\'' + cleDe(p) + '\')" '
+      + 'title="Retirer de la liste"><i class="fa-solid fa-trash"></i></button>'
+      + '<span id="etat-' + i + '" style="font-size:.78rem;color:#64748b;min-width:80px"></span>'
+      + '</div>'
+      + '<div id="msg-' + i + '" style="display:none;margin-top:.8rem;padding-left:1.7rem">'
+      + '<input type="text" id="obj-' + i + '" class="champ-plat" style="margin-bottom:.5rem">'
+      + '<textarea id="corps-' + i + '" class="champ-plat" style="min-height:200px;line-height:1.6;resize:vertical"></textarea>'
+      + '</div></div>';
+  }
+
+  html += '<div style="display:flex;gap:.8rem;align-items:center;padding:1.2rem 0 .3rem;flex-wrap:wrap">'
+    + '<button class="btn-sec" onclick="toutCocherEnvoi()">Tout selectionner</button>'
+    + '<button id="btnEnvoyer" onclick="envoyerSelection()" '
+    + 'style="background:linear-gradient(to right,#4f46e5,#06b6d4);border:none;color:#fff;'
+    + 'padding:.6rem 1.4rem;border-radius:8px;cursor:pointer;font-weight:600;font-size:.9rem">'
+    + '<i class="fa-solid fa-paper-plane"></i> Envoyer la selection</button>'
+    + '<span id="etatGlobal" style="color:#64748b;font-size:.82rem"></span></div>';
+
+  boite.innerHTML = html;
+
+  var type = document.getElementById('gabaritChoisi').value;
+  for(var j = 0; j < envoiListe.length; j++){
+    var champObjet = document.getElementById('obj-' + j);
+    var champCorps = document.getElementById('corps-' + j);
+    champObjet.value = (type === 'fournisseur')
+      ? 'Demande d\u0027information - services'
+      : 'Candidature spontanee - analyste securite junior';
+    champCorps.value = 'Generation du message en cours...';
+
+    try{
+      var rm = await fetch('/api/message', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({entreprise: envoiListe[j], type_gabarit: type})
+      });
+      var msg = await rm.json();
+      champObjet.value = msg.objet;
+      champCorps.value = msg.corps;
+      if(msg.ia){
+        var etat = document.getElementById('etat-' + j);
+        if(etat && !etat.textContent){
+          etat.textContent = 'IA';
+          etat.style.color = '#06b6d4';
+        }
+      }
+    }catch(e){
+      champCorps.value = gabarit(envoiListe[j], type);
+    }
+  }
+}
+
+function basculer(i){
+  var d = document.getElementById('msg-' + i);
+  d.style.display = (d.style.display === 'block') ? 'none' : 'block';
+}
+
+function toutCocherEnvoi(){
+  var b = document.querySelectorAll('.chkEnvoi');
+  var tout = true;
+  for(var i = 0; i < b.length; i++) if(!b[i].checked && !b[i].disabled) tout = false;
+  for(var j = 0; j < b.length; j++) if(!b[j].disabled) b[j].checked = !tout;
+}
+
+async function envoyerSelection(){
+  var coches = document.querySelectorAll('.chkEnvoi:checked');
+  if(!coches.length){ alert('Aucun prospect selectionne.'); return; }
+
+  var indices = [];
+  for(var k = 0; k < coches.length; k++) indices.push(parseInt(coches[k].dataset.i));
+
+  var btn = document.getElementById('btnEnvoyer');
+  var global = document.getElementById('etatGlobal');
+  btn.disabled = true;
+  btn.style.opacity = '.6';
+  var envoyes = 0;
+
+  for(var n = 0; n < indices.length; n++){
+    var i = indices[n];
+    var p = envoiListe[i];
+    var etat = document.getElementById('etat-' + i);
+    global.textContent = 'Envoi ' + (n+1) + ' / ' + indices.length + '...';
+    etat.textContent = 'envoi...';
+    etat.style.color = '#64748b';
+
+    try{
+      var r = await fetch('/api/send', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          destinataire: p.courriel,
+          objet: document.getElementById('obj-' + i).value.trim(),
+          message: document.getElementById('corps-' + i).value,
+          entreprise: p.nom
+        })
+      });
+      if(!r.ok){ var err = await r.json(); throw new Error(err.detail || r.status); }
+      etat.textContent = 'envoye';
+      etat.style.color = '#10b981';
+      document.querySelector('.chkEnvoi[data-i="' + i + '"]').checked = false;
+      envoyes++;
+    }catch(e){
+      etat.textContent = 'echec';
+      etat.style.color = '#f87171';
+      etat.title = e.message;
+    }
+  }
+
+  global.textContent = envoyes + ' envoye(s) sur ' + indices.length;
+  btn.disabled = false;
+  btn.style.opacity = '1';
+  majQuota();
+}
+
+majQuota();
+</script>
+</body>
+</html>

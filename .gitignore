@@ -1,0 +1,31 @@
+# Secrets — ne jamais committer
+.env
+*.env
+!.env.example
+credentials.json
+token.json
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Environnements virtuels
+.venv/
+venv/
+env/
+
+# Données générées
+data/*.csv
+data/*.xlsx
+data/*.db
+logs/
+*.log
+
+# Éditeurs
+.idea/
+.vscode/
+.DS_Store
