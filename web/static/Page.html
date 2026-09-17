@@ -602,6 +602,16 @@ async function supprimerSelection(){
 }
 
 // ===================== ENVOI =====================
+// Identité de l'expéditeur : chargée du serveur (lue du .env), jamais codée ici.
+var IDENTITE = {signature: '', presentation: ''};
+async function chargerIdentite(){
+  try{
+    var r = await fetch('/api/identite');
+    if(r.ok) IDENTITE = await r.json();
+  }catch(e){ /* repli : champs vides */ }
+}
+chargerIdentite();
+
 function gabarit(p, type){
   var domaine = (p.categorie || 'votre domaine').toLowerCase();
   var extrait = p.contexte ? ' - ' + p.contexte.slice(0,150) + '...' : '';
@@ -609,12 +619,12 @@ function gabarit(p, type){
     return 'Bonjour,\n\nJe vous ecris parce que votre entreprise oeuvre dans ' + domaine + extrait
       + '\n\nJe suis a la recherche d\u0027un fournisseur dans ce secteur et j\u0027aimerais connaitre '
       + 'vos services, vos delais et votre grille tarifaire.\n\nAuriez-vous quelques minutes pour en discuter ?'
-      + '\n\nCristobal Samano Osuna\n514 826-4039';
+      + '\n\n' + IDENTITE.signature;
   }
   return 'Bonjour,\n\nJe vous ecris parce que votre entreprise oeuvre dans ' + domaine + extrait
-    + '\n\nJe termine en decembre mon certificat en analyse et cybersecurite operationnelle a '
-    + 'Polytechnique Montreal.\n\nAuriez-vous des besoins, meme a temps partiel ou en stage ?'
-    + '\n\nCristobal Samano Osuna\n514 826-4039';
+    + '\n\n' + IDENTITE.presentation
+    + '\n\nAuriez-vous des besoins, meme a temps partiel ou en stage ?'
+    + '\n\n' + IDENTITE.signature;
 }
 async function retirerProspect(cle){
   if(!confirm('Retirer ce prospect de la liste ?')) return;

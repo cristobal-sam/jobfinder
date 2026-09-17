@@ -17,16 +17,17 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODELE = os.getenv("OLLAMA_MODELE", "qwen2.5:7b")
 TIMEOUT = 90
 
-SIGNATURE = (
-    "Cristobal Samano Osuna\n"
-    "514 826-4039 · linkedin.com/in/cristobal-samano-osuna-a22b7132a"
+# Identité de l'expéditeur : lue depuis le .env, jamais codée en dur.
+# Voir .env.example pour les variables attendues.
+SIGNATURE = os.getenv(
+    "SENDER_SIGNATURE",
+    "Prénom Nom\n000 000-0000 · linkedin.com/in/votre-profil",
 )
 
-PRESENTATION = (
-    "Je termine en décembre mon certificat en analyse et cybersécurité "
-    "opérationnelle à Polytechnique Montréal. J'ai la certification eJPT, "
-    "je travaille avec Python, Linux et les outils SIEM, et j'ai réalisé "
-    "des évaluations de vulnérabilités autorisées pour trois sites clients."
+PRESENTATION = os.getenv(
+    "SENDER_PRESENTATION",
+    "Je suis à la recherche d'une opportunité en cybersécurité "
+    "et je serais heureux de vous présenter mon profil.",
 )
 
 # Mots très fréquents et propres à chaque langue

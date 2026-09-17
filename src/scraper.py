@@ -51,24 +51,24 @@ class Visiteur:
             time.sleep(DELAI - ecoule)
         self._dernier_appel = time.time()
 
-    # def _autorise(self, url: str) -> bool:
-    #     p = urlparse(url)
-    #     base = f"{p.scheme}://{p.netloc}"
-    #     if base not in self._robots:
-    #         rp = RobotFileParser()
-    #         rp.set_url(urljoin(base, "/robots.txt"))
-    #         try:
-    #             rp.read()
-    #         except Exception:
-    #             rp = None          # robots.txt absent : on procède
-    #         self._robots[base] = rp
-    #     rp = self._robots[base]
-    #     return True if rp is None else rp.can_fetch(USER_AGENT, url)
+    def _autorise(self, url: str) -> bool:
+        p = urlparse(url)
+        base = f"{p.scheme}://{p.netloc}"
+        if base not in self._robots:
+            rp = RobotFileParser()
+            rp.set_url(urljoin(base, "/robots.txt"))
+            try:
+                rp.read()
+            except Exception:
+                rp = None          # robots.txt absent : on procède
+            self._robots[base] = rp
+        rp = self._robots[base]
+        return True if rp is None else rp.can_fetch(USER_AGENT, url)
 
     def obtenir(self, url: str) -> Optional[str]:
         """Retourne le HTML, ou None si interdit, absent, vide ou en erreur."""
-        # if not self._autorise(url):
-        #     return None
+        if not self._autorise(url):
+            return None
         self._attendre()
         try:
             r = self.session.get(url, timeout=TIMEOUT, allow_redirects=True)

@@ -193,9 +193,7 @@ def enrichir(req: RequeteEnrichir):
         tous += courriels(html)
         mailtos += courriels_mailto(html)
 
-    from src.extract import (courriels, courriels_mailto, meilleur_courriel,
-                             meilleur_contexte, page_carrieres)
-    ...
+    from src.extract import page_carrieres
     return {
         "courriel": meilleur_courriel(tous, req.domaine, prioritaires=mailtos),
         "contexte": meilleur_contexte(pages),
@@ -205,10 +203,6 @@ def enrichir(req: RequeteEnrichir):
 
 
 # ---------- persistance ----------
-
-CHAMPS = ["nom", "ville", "domaine", "courriel", "telephone",
-          "categorie", "contexte", "date_ajout"]
-
 
 @app.post("/api/save")
 def sauvegarder(donnees: list[dict]):
@@ -285,41 +279,24 @@ def quota():
 @app.post("/api/send")
 def envoyer_message(req: RequeteEnvoi):
     """Envoi APRÈS approbation explicite. Limite vérifiée côté serveur."""
-    # from src.send import envoyer, deja_contacte
-    #
-    # etat = quota()
-    # if etat["utilises"] >= etat["limite"]:
-    #     raise HTTPException(429, f"Limite quotidienne atteinte ({etat['limite']} envois).")
-    #
-    # if deja_contacte(req.destinataire):
-    #     raise HTTPException(409, f"{req.destinataire} a déjà été contacté.")
-    #
-    # try:
-    #     return envoyer(req.destinataire, req.objet, req.message, req.entreprise)
-    # except Exception as e:
-    #     raise HTTPException(500, f"Échec de l'envoi : {e}")
+    from src.send import envoyer, deja_contacte
+
+    etat = quota()
+    if etat["utilises"] >= etat["limite"]:
+        raise HTTPException(429, f"Limite quotidienne atteinte ({etat['limite']} envois).")
+
+    if deja_contacte(req.destinataire):
+        raise HTTPException(409, f"{req.destinataire} a déjà été contacté.")
+
+    try:
+        return envoyer(req.destinataire, req.objet, req.message, req.entreprise)
+    except Exception as e:
+        raise HTTPException(500, f"Échec de l'envoi : {e}")
 
 
-# ---------- LinkedIn (désactivé) ----------
-#
-# Module retiré : la recherche de profils LinkedIn collecte des données
-# personnelles d'individus qui n'y ont pas consenti, viole les conditions
-# d'utilisation de LinkedIn, et l'actor ne retourne de toute façon aucun
-# courriel (champ "emails" toujours vide). Conservé en commentaire à titre
-# de référence.
-#
-# class RequeteLinkedInRH(BaseModel):
-#     url_compagnie: str
-#
-# @app.post("/api/linkedin-rh")
-# def chercher_rh_api(req: RequeteLinkedInRH):
-#     from apify_client import ApifyClient
-#     client = ApifyClient(os.getenv("APIFY_TOKEN"))
-#     run = client.actor("harvestapi/linkedin-company-employees").call(run_input={
-#         "companies": [req.url_compagnie],
-#         "maxItems": 5,
-#     })
-#     ...
+# Note : la recherche de profils LinkedIn a été retirée du projet — elle
+# collecte des données personnelles d'individus sans consentement et viole
+# les conditions d'utilisation de LinkedIn.
 
 class RequeteMessage(BaseModel):
     entreprise: dict
@@ -337,5 +314,12 @@ def generer_message(req: RequeteMessage):
 def etat_ollama():
     from src.draft import ollama_disponible, OLLAMA_MODELE
     return {"disponible": ollama_disponible(), "modele": OLLAMA_MODELE}
+
+
+@app.get("/api/identite")
+def identite():
+    """Signature et présentation de l'expéditeur (lues du .env)."""
+    from src.draft import SIGNATURE, PRESENTATION
+    return {"signature": SIGNATURE, "presentation": PRESENTATION}
 # doit rester la dernière ligne : sinon ce montage intercepte les routes ci-dessus
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
